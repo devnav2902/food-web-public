@@ -6,13 +6,11 @@ import type { Category, Dish, RandomFilters, Restaurant } from "@/types";
 import { formatCurrency } from "@/utils/format";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Bookmark,
   ChevronRight,
   Copy,
   Dice5,
   LocateFixed,
   RefreshCw,
-  Send,
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
@@ -32,8 +30,6 @@ const spinMessages = [
   "Đang chốt món đáng tiền...",
 ];
 
-const foodMoods = ["Nóng hổi", "Đậm vị", "Dễ ăn", "Đáng thử"];
-
 export function RandomTool({
   categories,
   restaurants = [],
@@ -42,15 +38,12 @@ export function RandomTool({
 }: RandomToolProps) {
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [dish, setDish] = useState<Dish | undefined>();
-  const [history, setHistory] = useState<Dish[]>([]);
   const [categoryId, setCategoryId] = useState("");
   const [restaurantId, setRestaurantId] = useState("");
-  const [budget, setBudget] = useState<RandomFilters["budget"]>();
   const [nearMe, setNearMe] = useState(false);
   const [error, setError] = useState("");
   const [spinIndex, setSpinIndex] = useState(0);
   const [copied, setCopied] = useState(false);
-  const [savedDishId, setSavedDishId] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const todayKey = useMemo(
@@ -64,17 +57,6 @@ export function RandomTool({
   );
 
   useEffect(() => {
-    queueMicrotask(() => {
-      try {
-        const savedHistory = window.localStorage.getItem("food-random-history");
-        if (savedHistory) setHistory(JSON.parse(savedHistory) as Dish[]);
-      } catch {
-        setHistory([]);
-      }
-    });
-  }, []);
-
-  useEffect(() => {
     if (!isPending) return;
     const interval = window.setInterval(() => {
       setSpinIndex((current) => (current + 1) % spinMessages.length);
@@ -82,25 +64,6 @@ export function RandomTool({
 
     return () => window.clearInterval(interval);
   }, [isPending]);
-
-  function rememberDish(nextDish: Dish) {
-    setSavedDishId(nextDish.id);
-    setHistory((current) => {
-      const nextHistory = [
-        nextDish,
-        ...current.filter((item) => item.id !== nextDish.id),
-      ].slice(0, 5);
-      try {
-        window.localStorage.setItem(
-          "food-random-history",
-          JSON.stringify(nextHistory),
-        );
-      } catch {
-        // localStorage can be unavailable in private browsing; the tool still works.
-      }
-      return nextHistory;
-    });
-  }
 
   async function randomize(mode: "all" | "filtered" = "filtered") {
     setError("");
@@ -111,8 +74,6 @@ export function RandomTool({
             ? {}
             : {
                 categoryId: categoryId || undefined,
-                restaurantId: restaurantId || undefined,
-                budget,
                 nearMe,
               };
 
@@ -131,7 +92,6 @@ export function RandomTool({
         const nextDishes = await getRandomDishes(filters);
         setDishes(nextDishes);
         setDish(nextDishes[0]);
-        if (nextDishes[0]) rememberDish(nextDishes[0]);
       } catch {
         setError("Chưa random được món lúc này. Bạn thử lại một nhịp nhé.");
       }
@@ -181,7 +141,6 @@ export function RandomTool({
       aria-label="Công cụ random món ăn"
     >
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(135deg,rgba(255,247,237,0.96),rgba(255,255,255,0.78)_48%,rgba(236,253,245,0.78))]" />
-      <div className="absolute left-0 top-0 -z-10 h-32 w-full bg-[linear-gradient(90deg,rgba(249,115,22,0.16),transparent,rgba(20,184,166,0.14))]" />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_430px] lg:items-stretch">
         <div className="flex flex-col">
@@ -220,18 +179,17 @@ export function RandomTool({
             </label>
 
             {advanced ? (
-              <label className="flex min-h-12 items-center gap-3 border border-orange-100 bg-white px-3 text-sm font-bold text-stone-800 shadow-sm">
-                <input
-                  type="checkbox"
-                  checked={nearMe}
-                  onChange={(event) => setNearMe(event.target.checked)}
-                  className="h-4 w-4 accent-orange-700"
-                />
-                <LocateFixed
-                  className="h-4 w-4 text-orange-700"
-                  aria-hidden="true"
-                />
-                Ưu tiên gần tôi
+              <label className="text-sm font-bold text-stone-800">
+                Vị trí
+                <div className="mt-2 flex items-center gap-2 ">
+                  <input
+                    type="checkbox"
+                    checked={nearMe}
+                    onChange={(event) => setNearMe(event.target.checked)}
+                    className="h-4 w-4 accent-orange-700"
+                  />
+                  Ưu tiên gần tôi
+                </div>
               </label>
             ) : null}
           </div>
@@ -322,16 +280,6 @@ export function RandomTool({
                     </div>
                   </div>
                   <div className="p-4">
-                    <div className="flex flex-wrap gap-2 text-xs text-stone-600">
-                      {foodMoods.map((mood) => (
-                        <span
-                          key={mood}
-                          className="bg-orange-50 px-2 py-1 font-bold text-orange-800"
-                        >
-                          {mood}
-                        </span>
-                      ))}
-                    </div>
                     <p className="mt-3 text-sm leading-6 text-stone-700">
                       {dish.description}
                     </p>
@@ -369,7 +317,8 @@ export function RandomTool({
                       </motion.button>
                       <Link
                         href={`/mon-an/${dish.slug || dish.id}`}
-                        className="inline-flex min-h-11 items-center justify-center gap-1.5 border border-stone-300 px-3 text-stone-800 hover:bg-stone-50"
+                        className="inline-flex min-h-11 items-center justify-center gap-1.5 border border-stone-300 px-3 text-stone-800 hover:bg-stone-50 whitespace-nowrap"
+                        target="_blank"
                       >
                         Chi tiết
                         <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -383,11 +332,6 @@ export function RandomTool({
                         <Copy className="h-4 w-4" aria-hidden="true" />
                         {copied ? "Đã copy" : "Copy"}
                       </motion.button>
-                    </div>
-                    <div className="mt-4 border border-orange-100 bg-orange-50 p-3 text-xs leading-5 text-orange-900">
-                      {activeCategory || activeRestaurant
-                        ? `Đã lọc theo ${[activeCategory?.name, activeRestaurant?.name].filter(Boolean).join(" · ")}.`
-                        : "Nếu món này đúng gu, lưu link hoặc chia sẻ để lần sau chọn lại nhanh hơn."}
                     </div>
                   </div>
                 </motion.article>
@@ -430,7 +374,7 @@ export function RandomTool({
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-lg font-bold text-stone-950">
-                7 món vừa random
+                Những gợi ý khác
               </h2>
               <p className="mt-1 text-sm text-stone-600">
                 Bấm vào món để đưa lên kết quả chính và chia sẻ nhanh.
@@ -447,7 +391,6 @@ export function RandomTool({
                 key={`${item.id}-${index}`}
                 onClick={() => {
                   setDish(item);
-                  rememberDish(item);
                 }}
                 className={`min-h-24 border p-3 text-left text-sm transition hover:-translate-y-0.5 hover:bg-orange-50 ${
                   dish?.id === item.id
