@@ -1,13 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Bookmark, ChevronRight, Copy, Dice5, LocateFixed, RefreshCw, Send, Sparkles, Utensils } from "lucide-react";
-import Link from "next/link";
 import { getRandomDishes } from "@/api/random";
 import { DishImage } from "@/components/dishes/DishImage";
 import type { Category, Dish, RandomFilters, Restaurant } from "@/types";
 import { formatCurrency } from "@/utils/format";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  Bookmark,
+  ChevronRight,
+  Copy,
+  Dice5,
+  LocateFixed,
+  RefreshCw,
+  Send,
+  Sparkles,
+} from "lucide-react";
+import Link from "next/link";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 type RandomToolProps = {
   categories: Category[];
@@ -23,15 +32,14 @@ const spinMessages = [
   "Đang chốt món đáng tiền...",
 ];
 
-const moodChips = [
-  { label: "Ăn no", budget: "medium" as const, helper: "bữa chính" },
-  { label: "Tiết kiệm", budget: "cheap" as const, helper: "gọn ví" },
-  { label: "Tự thưởng", budget: "premium" as const, helper: "ngon hơn" },
-];
-
 const foodMoods = ["Nóng hổi", "Đậm vị", "Dễ ăn", "Đáng thử"];
 
-export function RandomTool({ categories, restaurants = [], advanced = false, title }: RandomToolProps) {
+export function RandomTool({
+  categories,
+  restaurants = [],
+  advanced = false,
+  title,
+}: RandomToolProps) {
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [dish, setDish] = useState<Dish | undefined>();
   const [history, setHistory] = useState<Dish[]>([]);
@@ -46,7 +54,12 @@ export function RandomTool({ categories, restaurants = [], advanced = false, tit
   const [isPending, startTransition] = useTransition();
 
   const todayKey = useMemo(
-    () => new Intl.DateTimeFormat("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit" }).format(new Date()),
+    () =>
+      new Intl.DateTimeFormat("vi-VN", {
+        weekday: "long",
+        day: "2-digit",
+        month: "2-digit",
+      }).format(new Date()),
     [],
   );
 
@@ -73,9 +86,15 @@ export function RandomTool({ categories, restaurants = [], advanced = false, tit
   function rememberDish(nextDish: Dish) {
     setSavedDishId(nextDish.id);
     setHistory((current) => {
-      const nextHistory = [nextDish, ...current.filter((item) => item.id !== nextDish.id)].slice(0, 5);
+      const nextHistory = [
+        nextDish,
+        ...current.filter((item) => item.id !== nextDish.id),
+      ].slice(0, 5);
       try {
-        window.localStorage.setItem("food-random-history", JSON.stringify(nextHistory));
+        window.localStorage.setItem(
+          "food-random-history",
+          JSON.stringify(nextHistory),
+        );
       } catch {
         // localStorage can be unavailable in private browsing; the tool still works.
       }
@@ -98,9 +117,13 @@ export function RandomTool({ categories, restaurants = [], advanced = false, tit
               };
 
         if (nearMe && "geolocation" in navigator) {
-          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-          });
+          const position = await new Promise<GeolocationPosition>(
+            (resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                timeout: 5000,
+              });
+            },
+          );
           filters.latitude = position.coords.latitude;
           filters.longitude = position.coords.longitude;
         }
@@ -140,16 +163,17 @@ export function RandomTool({ categories, restaurants = [], advanced = false, tit
 
   const priceText = useMemo(() => {
     if (!dish?.priceMin) return "";
-    return dish.priceMax ? `${formatCurrency(dish.priceMin)} - ${formatCurrency(dish.priceMax)}` : `Từ ${formatCurrency(dish.priceMin)}`;
+    return dish.priceMax
+      ? `${formatCurrency(dish.priceMin)} - ${formatCurrency(dish.priceMax)}`
+      : `Từ ${formatCurrency(dish.priceMin)}`;
   }, [dish]);
 
-  const activeCategory = categories.find((category) => category.id === categoryId);
-  const activeRestaurant = restaurants.find((restaurant) => restaurant.id === restaurantId);
-  const currentStatus = isPending
-    ? spinMessages[spinIndex]
-    : dish
-      ? `Đã chốt: ${dish.name}. Không hợp mood thì random tiếp.`
-      : "Chọn mood trước, rồi để random quyết định phần còn lại.";
+  const activeCategory = categories.find(
+    (category) => category.id === categoryId,
+  );
+  const activeRestaurant = restaurants.find(
+    (restaurant) => restaurant.id === restaurantId,
+  );
 
   return (
     <section
@@ -175,50 +199,8 @@ export function RandomTool({ categories, restaurants = [], advanced = false, tit
             {title || "Hôm nay ăn gì?"}
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-stone-700 sm:text-lg">
-            Bấm random để có món ngay, hoặc lọc nhẹ theo mood, ngân sách và quán. Lịch sử gần đây giúp bạn quay lại món hợp gu nhanh hơn.
+            Bấm random để có món ngay.
           </p>
-
-          <div className="mt-5 grid gap-2 sm:grid-cols-3" aria-label="Chọn nhanh theo tâm trạng ăn uống">
-            {moodChips.map((chip) => (
-              <motion.button
-                type="button"
-                key={chip.label}
-                onClick={() => setBudget(chip.budget)}
-                whileTap={{ scale: 0.97 }}
-                className={`min-h-16 border p-3 text-left transition ${
-                  budget === chip.budget
-                    ? "border-stone-950 bg-stone-950 text-white shadow-[0_16px_34px_rgba(28,25,23,0.18)]"
-                    : "border-orange-200 bg-white text-stone-900 shadow-sm hover:border-orange-300 hover:bg-orange-50"
-                }`}
-              >
-                <span className="flex items-center gap-2 text-sm font-black">
-                  <Utensils className="h-4 w-4" aria-hidden="true" />
-                  {chip.label}
-                </span>
-                <span className={budget === chip.budget ? "mt-1 block text-xs text-stone-200" : "mt-1 block text-xs text-stone-500"}>
-                  {chip.helper}
-                </span>
-              </motion.button>
-            ))}
-          </div>
-
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Danh mục phổ biến">
-            {categories.slice(0, 4).map((category) => (
-              <motion.button
-                type="button"
-                key={category.id}
-                onClick={() => setCategoryId(category.id)}
-                whileTap={{ scale: 0.97 }}
-                className={`shrink-0 border px-3 py-2 text-sm font-black transition ${
-                  categoryId === category.id
-                    ? "border-orange-600 bg-orange-600 text-white"
-                    : "border-orange-200 bg-white text-stone-800 hover:bg-orange-50"
-                }`}
-              >
-                {category.name}
-              </motion.button>
-            ))}
-          </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <label className="text-sm font-bold text-stone-800">
@@ -237,38 +219,6 @@ export function RandomTool({ categories, restaurants = [], advanced = false, tit
               </select>
             </label>
 
-            <label className="text-sm font-bold text-stone-800">
-              Quán ăn
-              <select
-                value={restaurantId}
-                onChange={(event) => setRestaurantId(event.target.value)}
-                className="mt-2 h-12 w-full border border-orange-100 bg-white px-3 text-stone-950 shadow-sm outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
-              >
-                <option value="">Quán bất kỳ</option>
-                {restaurants.map((restaurant) => (
-                  <option key={restaurant.id} value={restaurant.id}>
-                    {restaurant.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {advanced ? (
-              <label className="text-sm font-bold text-stone-800">
-                Ngân sách
-                <select
-                  value={budget || ""}
-                  onChange={(event) => setBudget((event.target.value || undefined) as RandomFilters["budget"])}
-                  className="mt-2 h-12 w-full border border-orange-100 bg-white px-3 text-stone-950 shadow-sm outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
-                >
-                  <option value="">Bất kỳ</option>
-                  <option value="cheap">Tiết kiệm</option>
-                  <option value="medium">Vừa phải</option>
-                  <option value="premium">Đãi bản thân</option>
-                </select>
-              </label>
-            ) : null}
-
             {advanced ? (
               <label className="flex min-h-12 items-center gap-3 border border-orange-100 bg-white px-3 text-sm font-bold text-stone-800 shadow-sm">
                 <input
@@ -277,7 +227,10 @@ export function RandomTool({ categories, restaurants = [], advanced = false, tit
                   onChange={(event) => setNearMe(event.target.checked)}
                   className="h-4 w-4 accent-orange-700"
                 />
-                <LocateFixed className="h-4 w-4 text-orange-700" aria-hidden="true" />
+                <LocateFixed
+                  className="h-4 w-4 text-orange-700"
+                  aria-hidden="true"
+                />
                 Ưu tiên gần tôi
               </label>
             ) : null}
@@ -292,44 +245,21 @@ export function RandomTool({ categories, restaurants = [], advanced = false, tit
               whileHover={{ y: -2 }}
               className="inline-flex min-h-14 items-center justify-center gap-2 bg-stone-950 px-8 text-lg font-black text-white shadow-[0_16px_36px_rgba(28,25,23,0.24)] transition hover:bg-orange-700 disabled:cursor-wait disabled:bg-orange-300"
             >
-              {isPending ? <RefreshCw className="h-5 w-5 animate-spin" aria-hidden="true" /> : <Dice5 className="h-5 w-5" aria-hidden="true" />}
+              {isPending ? (
+                <RefreshCw
+                  className="h-5 w-5 animate-spin"
+                  aria-hidden="true"
+                />
+              ) : (
+                <Dice5 className="h-5 w-5" aria-hidden="true" />
+              )}
               {isPending ? "Đang chọn món..." : "Random món ngay"}
             </motion.button>
-            {advanced ? (
-              <motion.button
-                type="button"
-                onClick={() => randomize("all")}
-                disabled={isPending}
-                whileTap={{ scale: 0.98 }}
-                className="inline-flex min-h-14 items-center justify-center gap-2 border border-orange-200 bg-white px-5 font-bold text-stone-900 shadow-sm transition hover:bg-orange-50 disabled:cursor-wait"
-              >
-                <Sparkles className="h-4 w-4 text-orange-700" aria-hidden="true" />
-                Random tất cả
-              </motion.button>
-            ) : null}
           </div>
 
-          <div className="mt-3 min-h-6 text-sm font-bold text-orange-800" aria-live="polite">
-            {currentStatus}
-          </div>
-          {error ? <p className="mt-4 text-sm font-medium text-red-700">{error}</p> : null}
-
-          <div className="mt-auto pt-6">
-            <div className="grid grid-cols-3 gap-2 text-center text-xs font-bold text-stone-700 sm:max-w-lg">
-              <div className="border border-orange-100 bg-white/80 p-3">
-                <span className="block text-lg font-black text-orange-700">7</span>
-                gợi ý/lần
-              </div>
-              <div className="border border-emerald-100 bg-white/80 p-3">
-                <span className="block text-lg font-black text-emerald-700">{history.length || 5}</span>
-                gần đây
-              </div>
-              <div className="border border-orange-100 bg-white/80 p-3">
-                <span className="block text-lg font-black text-orange-700">0đ</span>
-                dùng ngay
-              </div>
-            </div>
-          </div>
+          {error ? (
+            <p className="mt-4 text-sm font-medium text-red-700">{error}</p>
+          ) : null}
         </div>
 
         <div className="w-full">
@@ -346,14 +276,25 @@ export function RandomTool({ categories, restaurants = [], advanced = false, tit
                   <div className="absolute inset-0 animate-[shimmer_1.6s_infinite] bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.7),transparent)]" />
                   <motion.div
                     animate={{ rotate: 360 }}
-                    transition={{ duration: 1.1, repeat: Infinity, ease: "linear" }}
+                    transition={{
+                      duration: 1.1,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
                     className="relative flex h-28 w-28 items-center justify-center border-8 border-orange-100 bg-white shadow-inner"
                   >
                     <div className="absolute inset-3 border-4 border-transparent border-t-orange-600" />
-                    <Dice5 className="relative h-9 w-9 text-orange-700" aria-hidden="true" />
+                    <Dice5
+                      className="relative h-9 w-9 text-orange-700"
+                      aria-hidden="true"
+                    />
                   </motion.div>
-                  <p className="relative mt-5 text-lg font-black text-stone-950">{spinMessages[spinIndex]}</p>
-                  <p className="relative mt-2 text-sm text-stone-600">Đang chọn một món đủ ngon để bạn không phải nghĩ nữa.</p>
+                  <p className="relative mt-5 text-lg font-black text-stone-950">
+                    {spinMessages[spinIndex]}
+                  </p>
+                  <p className="relative mt-2 text-sm text-stone-600">
+                    Đang chọn một món đủ ngon để bạn không phải nghĩ nữa.
+                  </p>
                 </motion.div>
               ) : dish ? (
                 <motion.article
@@ -364,29 +305,57 @@ export function RandomTool({ categories, restaurants = [], advanced = false, tit
                   transition={{ type: "spring", stiffness: 260, damping: 24 }}
                 >
                   <div className="relative">
-                    <DishImage src={dish.imageUrl} alt={dish.name} priority className="min-h-64" />
+                    <DishImage
+                      src={dish.imageUrl}
+                      alt={dish.name}
+                      priority
+                      className="min-h-64"
+                    />
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-stone-950/88 via-stone-950/42 to-transparent p-4 pt-20 text-white">
                       <p className="inline-flex items-center gap-1.5 bg-orange-500 px-2 py-1 text-xs font-black uppercase text-white">
                         <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
                         Nên thử
                       </p>
-                      <h2 className="mt-2 text-3xl font-black leading-tight">{dish.name}</h2>
+                      <h2 className="mt-2 text-3xl font-black leading-tight">
+                        {dish.name}
+                      </h2>
                     </div>
                   </div>
                   <div className="p-4">
                     <div className="flex flex-wrap gap-2 text-xs text-stone-600">
                       {foodMoods.map((mood) => (
-                        <span key={mood} className="bg-orange-50 px-2 py-1 font-bold text-orange-800">
+                        <span
+                          key={mood}
+                          className="bg-orange-50 px-2 py-1 font-bold text-orange-800"
+                        >
                           {mood}
                         </span>
                       ))}
                     </div>
-                    <p className="mt-3 text-sm leading-6 text-stone-700">{dish.description}</p>
+                    <p className="mt-3 text-sm leading-6 text-stone-700">
+                      {dish.description}
+                    </p>
                     <div className="mt-3 flex flex-wrap gap-2 text-xs text-stone-600">
-                      {dish.category ? <span className="bg-orange-50 px-2 py-1 font-semibold text-orange-800">{dish.category.name}</span> : null}
-                      {dish.restaurant ? <span className="bg-stone-100 px-2 py-1">{dish.restaurant.name}</span> : null}
-                      {dish.rating ? <span className="bg-stone-100 px-2 py-1">{dish.rating.toFixed(1)} sao</span> : null}
-                      {priceText ? <span className="bg-emerald-50 px-2 py-1 font-semibold text-emerald-800">{priceText}</span> : null}
+                      {dish.category ? (
+                        <span className="bg-orange-50 px-2 py-1 font-semibold text-orange-800">
+                          {dish.category.name}
+                        </span>
+                      ) : null}
+                      {dish.restaurant ? (
+                        <span className="bg-stone-100 px-2 py-1">
+                          {dish.restaurant.name}
+                        </span>
+                      ) : null}
+                      {dish.rating ? (
+                        <span className="bg-stone-100 px-2 py-1">
+                          {dish.rating.toFixed(1)} sao
+                        </span>
+                      ) : null}
+                      {priceText ? (
+                        <span className="bg-emerald-50 px-2 py-1 font-semibold text-emerald-800">
+                          {priceText}
+                        </span>
+                      ) : null}
                     </div>
                     <div className="mt-4 grid grid-cols-2 gap-2 text-sm font-semibold sm:grid-cols-4">
                       <motion.button
@@ -398,27 +367,23 @@ export function RandomTool({ categories, restaurants = [], advanced = false, tit
                         <RefreshCw className="h-4 w-4" aria-hidden="true" />
                         Lại
                       </motion.button>
-                      <Link href={`/mon-an/${dish.slug || dish.id}`} className="inline-flex min-h-11 items-center justify-center gap-1.5 border border-stone-300 px-3 text-stone-800 hover:bg-stone-50">
+                      <Link
+                        href={`/mon-an/${dish.slug || dish.id}`}
+                        className="inline-flex min-h-11 items-center justify-center gap-1.5 border border-stone-300 px-3 text-stone-800 hover:bg-stone-50"
+                      >
                         Chi tiết
                         <ChevronRight className="h-4 w-4" aria-hidden="true" />
                       </Link>
-                      <motion.button whileTap={{ scale: 0.97 }} type="button" onClick={shareDish} className="inline-flex min-h-11 items-center justify-center gap-1.5 border border-stone-300 px-3 text-stone-800 hover:bg-stone-50">
-                        <Send className="h-4 w-4" aria-hidden="true" />
-                        Chia sẻ
-                      </motion.button>
-                      <motion.button whileTap={{ scale: 0.97 }} type="button" onClick={copyDishLink} className="inline-flex min-h-11 items-center justify-center gap-1.5 border border-stone-300 px-3 text-stone-800 hover:bg-stone-50">
+                      <motion.button
+                        whileTap={{ scale: 0.97 }}
+                        type="button"
+                        onClick={copyDishLink}
+                        className="inline-flex min-h-11 items-center justify-center gap-1.5 border border-stone-300 px-3 text-stone-800 hover:bg-stone-50"
+                      >
                         <Copy className="h-4 w-4" aria-hidden="true" />
                         {copied ? "Đã copy" : "Copy"}
                       </motion.button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => rememberDish(dish)}
-                      className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 border border-orange-200 bg-orange-50 px-3 text-sm font-black text-orange-900 hover:bg-orange-100"
-                    >
-                      <Bookmark className="h-4 w-4" aria-hidden="true" />
-                      {savedDishId === dish.id ? "Đã lưu vào món gần đây" : "Lưu món này để lát chọn lại"}
-                    </button>
                     <div className="mt-4 border border-orange-100 bg-orange-50 p-3 text-xs leading-5 text-orange-900">
                       {activeCategory || activeRestaurant
                         ? `Đã lọc theo ${[activeCategory?.name, activeRestaurant?.name].filter(Boolean).join(" · ")}.`
@@ -436,15 +401,22 @@ export function RandomTool({ categories, restaurants = [], advanced = false, tit
                 >
                   <motion.span
                     animate={{ y: [0, -8, 0] }}
-                    transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                    transition={{
+                      duration: 2.4,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
                     className="flex h-20 w-20 items-center justify-center bg-stone-950 text-white shadow-[0_16px_36px_rgba(28,25,23,0.2)]"
                     aria-hidden="true"
                   >
                     <Dice5 className="h-9 w-9" />
                   </motion.span>
-                  <p className="mt-5 text-xl font-black text-stone-950">Bấm random để có món đầu tiên</p>
+                  <p className="mt-5 text-xl font-black text-stone-950">
+                    Bấm random để có món đầu tiên
+                  </p>
                   <p className="mt-2 max-w-xs text-sm leading-6 text-stone-600">
-                    Không cần đăng nhập. Có thể random lại ngay nếu món chưa đúng mood.
+                    Không cần đăng nhập. Có thể random lại ngay nếu món chưa
+                    đúng mood.
                   </p>
                 </motion.div>
               )}
@@ -457,10 +429,16 @@ export function RandomTool({ categories, restaurants = [], advanced = false, tit
         <div className="mt-6 border-t border-orange-100 pt-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-lg font-bold text-stone-950">7 món vừa random</h2>
-              <p className="mt-1 text-sm text-stone-600">Bấm vào món để đưa lên kết quả chính và chia sẻ nhanh.</p>
+              <h2 className="text-lg font-bold text-stone-950">
+                7 món vừa random
+              </h2>
+              <p className="mt-1 text-sm text-stone-600">
+                Bấm vào món để đưa lên kết quả chính và chia sẻ nhanh.
+              </p>
             </div>
-            <span className="text-sm font-semibold text-orange-700">{dishes.length} gợi ý</span>
+            <span className="text-sm font-semibold text-orange-700">
+              {dishes.length} gợi ý
+            </span>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
             {dishes.map((item, index) => (
@@ -472,30 +450,24 @@ export function RandomTool({ categories, restaurants = [], advanced = false, tit
                   rememberDish(item);
                 }}
                 className={`min-h-24 border p-3 text-left text-sm transition hover:-translate-y-0.5 hover:bg-orange-50 ${
-                  dish?.id === item.id ? "border-orange-400 bg-orange-50 shadow-sm" : "border-stone-200 bg-white"
+                  dish?.id === item.id
+                    ? "border-orange-400 bg-orange-50 shadow-sm"
+                    : "border-stone-200 bg-white"
                 }`}
               >
-                <span className="block font-bold text-stone-950">{item.name}</span>
-                {item.restaurant ? <span className="mt-1 block text-xs leading-5 text-stone-600">{item.restaurant.name}</span> : null}
-                {item.rating ? <span className="mt-2 inline-block bg-white px-2 py-1 text-xs font-semibold text-orange-700">{item.rating.toFixed(1)} sao</span> : null}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {history.length > 0 ? (
-        <div className="mt-6 border-t border-orange-100 pt-5">
-          <h2 className="text-lg font-bold text-stone-950">Gần đây bạn đã random</h2>
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-            {history.map((item) => (
-              <button
-                type="button"
-                key={item.id}
-                onClick={() => setDish(item)}
-                className="shrink-0 border border-orange-100 bg-white px-3 py-2 text-left text-sm font-bold text-stone-900 shadow-sm hover:bg-orange-50"
-              >
-                {item.name}
+                <span className="block font-bold text-stone-950">
+                  {item.name}
+                </span>
+                {item.restaurant ? (
+                  <span className="mt-1 block text-xs leading-5 text-stone-600">
+                    {item.restaurant.name}
+                  </span>
+                ) : null}
+                {item.rating ? (
+                  <span className="mt-2 inline-block bg-white px-2 py-1 text-xs font-semibold text-orange-700">
+                    {item.rating.toFixed(1)} sao
+                  </span>
+                ) : null}
               </button>
             ))}
           </div>
@@ -509,8 +481,16 @@ export function RandomTool({ categories, restaurants = [], advanced = false, tit
           disabled={isPending}
           className="inline-flex min-h-14 w-full items-center justify-center gap-2 bg-stone-950 px-5 text-base font-black text-white shadow-[0_16px_40px_rgba(28,25,23,0.35)] disabled:cursor-wait disabled:bg-orange-300"
         >
-          {isPending ? <RefreshCw className="h-5 w-5 animate-spin" aria-hidden="true" /> : <Dice5 className="h-5 w-5" aria-hidden="true" />}
-          {isPending ? spinMessages[spinIndex] : dish ? "Random món khác" : "Random món ngay"}
+          {isPending ? (
+            <RefreshCw className="h-5 w-5 animate-spin" aria-hidden="true" />
+          ) : (
+            <Dice5 className="h-5 w-5" aria-hidden="true" />
+          )}
+          {isPending
+            ? spinMessages[spinIndex]
+            : dish
+              ? "Random món khác"
+              : "Random món ngay"}
         </button>
       </div>
     </section>

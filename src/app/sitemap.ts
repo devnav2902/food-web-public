@@ -13,12 +13,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 1,
     },
-    {
-      url: absoluteUrl("/blog/hom-nay-an-gi"),
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
     ...dishes.map((dish) => ({
       url: absoluteUrl(`/mon-an/${dish.slug || dish.id}`),
       lastModified: now,
