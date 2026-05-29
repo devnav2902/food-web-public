@@ -380,9 +380,6 @@ export function RandomTool({
                 Bấm vào món để đưa lên kết quả chính và chia sẻ nhanh.
               </p>
             </div>
-            <span className="text-sm font-semibold text-orange-700">
-              {dishes.length} gợi ý
-            </span>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
             {dishes.map((item, index) => (

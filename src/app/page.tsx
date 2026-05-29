@@ -1,19 +1,12 @@
 import type { Metadata } from "next";
-import {
-  ArrowRight,
-  CheckCircle2,
-  Clock3,
-  Flame,
-  HeartHandshake,
-} from "lucide-react";
-import Link from "next/link";
+import { Flame } from "lucide-react";
 import { AdSlot } from "@/components/ads/AdSlot";
 import { DishCard } from "@/components/dishes/DishCard";
 import { AppCta } from "@/components/layout/AppCta";
 import { RandomTool } from "@/components/random/RandomTool";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { getCategories } from "@/api/categories";
-import { getFeaturedDishes } from "@/api/dishes";
+import { getTopDishes } from "@/api/dishes";
 import { getRestaurants } from "@/api/restaurants";
 import { absoluteUrl, baseMetadata } from "@/lib/site";
 
@@ -30,7 +23,7 @@ export default async function HomePage() {
   const [categories, restaurants, featuredDishes] = await Promise.all([
     getCategories(),
     getRestaurants(),
-    getFeaturedDishes(6),
+    getTopDishes(5),
   ]);
 
   const faqItems = [
