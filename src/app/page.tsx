@@ -7,7 +7,6 @@ import { RandomTool } from "@/components/random/RandomTool";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { getCategories } from "@/api/categories";
 import { getTopDishes } from "@/api/dishes";
-import { getRestaurants } from "@/api/restaurants";
 import { absoluteUrl, baseMetadata } from "@/lib/site";
 
 export const revalidate = 300;
@@ -15,14 +14,13 @@ export const revalidate = 300;
 export const metadata: Metadata = baseMetadata({
   title: "Random món ăn hôm nay - Hôm Nay Ăn Gì?",
   description:
-    "Không biết hôm nay ăn gì? Random ngay 7 món ăn, lọc theo danh mục, quán ăn, ngân sách hoặc vị trí gần bạn.",
+    "Không biết hôm nay ăn gì? Bật vị trí rồi random ngay 7 món ăn gần bạn để chốt quán nhanh hơn.",
   path: "/",
 });
 
 export default async function HomePage() {
-  const [categories, restaurants, featuredDishes] = await Promise.all([
+  const [categories, featuredDishes] = await Promise.all([
     getCategories(),
-    getRestaurants(),
     getTopDishes(5),
   ]);
 
@@ -30,12 +28,12 @@ export default async function HomePage() {
     {
       question: "Random món ăn hoạt động thế nào?",
       answer:
-        "Website lấy 7 món ngẫu nhiên, sau đó hiển thị một món chính cùng danh sách gợi ý để bạn chọn nhanh.",
+        "Website lấy vị trí hiện tại của bạn, tìm các món trong bán kính đã chọn rồi random ra 7 gợi ý để chốt nhanh.",
     },
     {
-      question: "Có thể random theo nhu cầu không?",
+      question: "Cần bật vị trí không?",
       answer:
-        "Có. Bạn có thể lọc theo danh mục, quán ăn, ngân sách hoặc bật tùy chọn gần tôi nếu muốn tìm gợi ý phù hợp hơn.",
+        "Có. Endpoint random hiện dùng latitude và longitude để trả về món gần bạn, nên cần cấp quyền vị trí trên trình duyệt.",
     },
     {
       question: "Khi nào nên random lại?",
@@ -111,8 +109,6 @@ export default async function HomePage() {
       <section className="mx-auto max-w-6xl px-4 py-4 sm:py-7">
         <RandomTool
           categories={categories}
-          restaurants={restaurants}
-          advanced
           title="Hôm nay ăn gì?"
         />
       </section>
