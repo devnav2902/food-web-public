@@ -71,10 +71,14 @@ function getGoogleMapsUrl(coordinates: Coordinates) {
 }
 
 function readStoredCoordinates() {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") {
+    return null;
+  }
 
   const savedLocation = window.localStorage.getItem(LOCATION_STORAGE_KEY);
-  if (!savedLocation) return null;
+  if (!savedLocation) {
+    return null;
+  }
 
   try {
     const parsed = JSON.parse(savedLocation) as Partial<Coordinates> | null;
@@ -96,25 +100,14 @@ function readStoredCoordinates() {
 }
 
 export function RandomTool({ categories, title }: RandomToolProps) {
-  const initialCoordinates = readStoredCoordinates();
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [dish, setDish] = useState<Dish | undefined>();
   const [categoryId, setCategoryId] = useState("");
   const [radiusKm, setRadiusKm] = useState("5");
-  const [coordinates, setCoordinates] = useState<Coordinates | null>(
-    initialCoordinates,
-  );
-  const [locationLabel, setLocationLabel] = useState(
-    initialCoordinates
-      ? "Đã lấy vị trí trên thiết bị này"
-      : "Chưa lấy vị trí hiện tại",
-  );
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
+  const [locationLabel, setLocationLabel] = useState("");
   const [error, setError] = useState("");
-  const [status, setStatus] = useState(
-    initialCoordinates
-      ? "Đang dùng vị trí đã lưu. Bạn có thể bấm cập nhật nếu đã di chuyển."
-      : "",
-  );
+  const [status, setStatus] = useState("");
   const [spinIndex, setSpinIndex] = useState(0);
   const [copied, setCopied] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
@@ -129,6 +122,21 @@ export function RandomTool({ categories, title }: RandomToolProps) {
       }).format(new Date()),
     [],
   );
+
+  useEffect(() => {
+    const initialCoordinates = readStoredCoordinates();
+
+    if (initialCoordinates) {
+      setCoordinates(initialCoordinates);
+      setLocationLabel("Đã lý vị trí trên thiết bị");
+      setStatus(
+        "Đang dùng vị trí đã lưu. Bạn có thể bấm cập nhật nếu đã di chuyển.",
+      );
+    } else {
+      setLocationLabel("Chưa lý vị trí hiện tại");
+      setStatus("");
+    }
+  }, []);
 
   useEffect(() => {
     if (!isPending) return;
@@ -163,7 +171,10 @@ export function RandomTool({ categories, title }: RandomToolProps) {
 
     setCoordinates(nextCoordinates);
     setLocationLabel("Đã lấy vị trí hiện tại của bạn");
-    window.localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(nextCoordinates));
+    window.localStorage.setItem(
+      LOCATION_STORAGE_KEY,
+      JSON.stringify(nextCoordinates),
+    );
 
     return nextCoordinates;
   }
@@ -183,7 +194,9 @@ export function RandomTool({ categories, title }: RandomToolProps) {
 
     try {
       await ensureCoordinates();
-      setStatus("Đã lấy vị trí thành công. Giờ bạn có thể random món gần mình.");
+      setStatus(
+        "Đã lấy vị trí thành công. Giờ bạn có thể random món gần mình.",
+      );
     } catch (caughtError) {
       const errorCode = getGeolocationErrorCode(caughtError);
 
@@ -340,7 +353,10 @@ export function RandomTool({ categories, title }: RandomToolProps) {
                   className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-4 text-sm font-bold text-orange-800 transition hover:bg-orange-100 disabled:cursor-wait disabled:opacity-70"
                 >
                   {isLocating ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    <RefreshCw
+                      className="h-4 w-4 animate-spin"
+                      aria-hidden="true"
+                    />
                   ) : (
                     <LocateFixed className="h-4 w-4" aria-hidden="true" />
                   )}
@@ -407,7 +423,9 @@ export function RandomTool({ categories, title }: RandomToolProps) {
           </div>
 
           {status ? (
-            <p className="mt-4 text-sm font-medium text-emerald-700">{status}</p>
+            <p className="mt-4 text-sm font-medium text-emerald-700">
+              {status}
+            </p>
           ) : null}
           {error ? (
             <p className="mt-2 text-sm font-medium text-red-700">{error}</p>
@@ -514,7 +532,9 @@ export function RandomTool({ categories, title }: RandomToolProps) {
                         {dish.rating ? (
                           <span className="rounded-md bg-white px-2 py-1 font-semibold text-orange-700">
                             {dish.rating.toFixed(1)} sao
-                            {dish.ratingCount ? ` · ${dish.ratingCount} đánh giá` : ""}
+                            {dish.ratingCount
+                              ? ` · ${dish.ratingCount} đánh giá`
+                              : ""}
                           </span>
                         ) : null}
                         {priceText ? (
