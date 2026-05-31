@@ -19,6 +19,9 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
+            export NVM_DIR="/home/${{ secrets.SSH_USERNAME }}/.nvm"
+            source "$NVM_DIR/nvm.sh"
+
             cd /opt/food-web-public
 
             git fetch
