@@ -32,6 +32,6 @@ jobs:
 
             pnpm build
 
-            pm2 restart food-web-public || pm2 start ecosystem.config.js
+            pm2 restart food-web-public || pm2 start ecosystem.config.js --env production
 
             pm2 save
