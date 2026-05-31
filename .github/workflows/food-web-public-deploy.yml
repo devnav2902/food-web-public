@@ -1,0 +1,34 @@
+name: Deploy Web Public
+run-name: ${{ github.actor }} is deploying to ${{ github.ref }}
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/food-app-be
+    steps:
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /opt/food-web-public
+
+            git fetch
+
+            git reset --hard origin/master
+
+            pnpm install
+
+            pnpm build
+
+            pm2 restart food-web-public || pm2 start ecosystem.config.js
+
+            pm2 save
