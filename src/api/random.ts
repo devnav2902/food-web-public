@@ -11,6 +11,8 @@ type BackendRandomDish = {
   dish_id: number | string;
   dish_name: string;
   dish_description?: string | null;
+  dish_rating_avg?: number | string | null;
+  dish_rating_count?: number | string | null;
   dish_category_id?: number | string | null;
   restaurant_id?: number | string | null;
   restaurant_name?: string | null;
@@ -41,6 +43,10 @@ function buildQuery(filters: RandomFilters) {
 
   if (filters.limit) {
     params.set("limit", String(filters.limit));
+  }
+
+  if (filters.categoryId) {
+    params.set("category_id", filters.categoryId);
   }
 
   return `?${params.toString()}`;
@@ -94,9 +100,13 @@ function mapBackendDish(dish: BackendRandomDish): Dish {
     slug: `${slugifyVietnamese(dish.dish_name)}-${dish.dish_id}`,
     description:
       dish.dish_description?.trim() ||
-      (dish.restaurant_name ? `Gợi ý gần bạn tại ${dish.restaurant_name}.` : "Món ăn được random từ dữ liệu gần bạn."),
+      (dish.restaurant_name
+        ? `Gợi ý gần bạn tại ${dish.restaurant_name}.`
+        : "Món ăn được random từ dữ liệu gần bạn."),
     imageUrl: imageUrl || undefined,
     images,
+    rating: toNumber(dish.dish_rating_avg),
+    ratingCount: toNumber(dish.dish_rating_count),
     distanceKm: toNumber(dish.distance_km),
     suggestedByName: dish.suggested_by_name || undefined,
     categoryId:

@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Copy,
   Dice5,
+  ExternalLink,
   LocateFixed,
   MapPin,
   RefreshCw,
@@ -40,6 +41,8 @@ const radiusOptions = [
   { label: "10 km", value: 10 },
   { label: "15 km", value: 15 },
 ];
+const RANDOM_RESULT_DELAY_MS = 3000;
+const LOCATION_STORAGE_KEY = "random-tool-location";
 
 function getGeolocationErrorCode(error: unknown) {
   if (
@@ -63,16 +66,58 @@ function formatDistance(distanceKm?: number) {
   return `${distanceKm.toFixed(distanceKm >= 10 ? 0 : 1)} km`;
 }
 
+function getGoogleMapsUrl(coordinates: Coordinates) {
+  return `https://www.google.com/maps/search/?api=1&query=${coordinates.latitude},${coordinates.longitude}`;
+}
+
+function readStoredCoordinates() {
+  if (typeof window === "undefined") return null;
+
+  const savedLocation = window.localStorage.getItem(LOCATION_STORAGE_KEY);
+  if (!savedLocation) return null;
+
+  try {
+    const parsed = JSON.parse(savedLocation) as Partial<Coordinates> | null;
+    if (
+      parsed &&
+      typeof parsed.latitude === "number" &&
+      typeof parsed.longitude === "number"
+    ) {
+      return {
+        latitude: parsed.latitude,
+        longitude: parsed.longitude,
+      };
+    }
+  } catch {
+    window.localStorage.removeItem(LOCATION_STORAGE_KEY);
+  }
+
+  return null;
+}
+
 export function RandomTool({ categories, title }: RandomToolProps) {
+  const initialCoordinates = readStoredCoordinates();
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [dish, setDish] = useState<Dish | undefined>();
   const [categoryId, setCategoryId] = useState("");
   const [radiusKm, setRadiusKm] = useState("5");
-  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
-  const [locationLabel, setLocationLabel] = useState("Chưa lấy vị trí");
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(
+    initialCoordinates,
+  );
+  const [locationLabel, setLocationLabel] = useState(
+    initialCoordinates
+      ? "Đã lấy vị trí trên thiết bị này"
+      : "Chưa lấy vị trí hiện tại",
+  );
   const [error, setError] = useState("");
+  const [status, setStatus] = useState(
+    initialCoordinates
+      ? "Đang dùng vị trí đã lưu. Bạn có thể bấm cập nhật nếu đã di chuyển."
+      : "",
+  );
   const [spinIndex, setSpinIndex] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const todayKey = useMemo(
@@ -101,13 +146,15 @@ export function RandomTool({ categories, title }: RandomToolProps) {
       throw new Error("Trình duyệt này chưa hỗ trợ định vị.");
     }
 
-    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 120000,
-      });
-    });
+    const position = await new Promise<GeolocationPosition>(
+      (resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 120000,
+        });
+      },
+    );
 
     const nextCoordinates = {
       latitude: position.coords.latitude,
@@ -115,24 +162,28 @@ export function RandomTool({ categories, title }: RandomToolProps) {
     };
 
     setCoordinates(nextCoordinates);
-    setLocationLabel(
-      `${nextCoordinates.latitude.toFixed(5)}, ${nextCoordinates.longitude.toFixed(5)}`,
-    );
+    setLocationLabel("Đã lấy vị trí hiện tại của bạn");
+    window.localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(nextCoordinates));
 
     return nextCoordinates;
   }
 
   function setLocationError(message: string) {
     setCoordinates(null);
-    setLocationLabel("Chưa lấy vị trí");
+    setLocationLabel("Chưa lấy vị trí hiện tại");
     setError(message);
+    setStatus("");
+    window.localStorage.removeItem(LOCATION_STORAGE_KEY);
   }
 
   async function requestLocation() {
     setError("");
+    setStatus("");
+    setIsLocating(true);
 
     try {
       await ensureCoordinates();
+      setStatus("Đã lấy vị trí thành công. Giờ bạn có thể random món gần mình.");
     } catch (caughtError) {
       const errorCode = getGeolocationErrorCode(caughtError);
 
@@ -142,28 +193,46 @@ export function RandomTool({ categories, title }: RandomToolProps) {
       }
 
       if (errorCode === 3) {
-        setLocationError("Lấy vị trí quá lâu. Bạn thử lại ở nơi có GPS hoặc mạng ổn định hơn.");
+        setLocationError(
+          "Lấy vị trí quá lâu. Bạn thử lại ở nơi có GPS hoặc mạng ổn định hơn.",
+        );
         return;
       }
 
       setLocationError("Chưa lấy được vị trí hiện tại.");
+    } finally {
+      setIsLocating(false);
     }
   }
 
   async function randomize() {
+    if (isPending) return;
+
     setError("");
+
+    if (!coordinates) {
+      setError("Bạn cần bấm lấy vị trí trước khi random món gần bạn.");
+      return;
+    }
 
     startTransition(async () => {
       try {
-        const nextCoordinates = await ensureCoordinates();
-        const nextDishes = await getRandomDishes({
-          latitude: nextCoordinates.latitude,
-          longitude: nextCoordinates.longitude,
-          radiusKm: Number(radiusKm),
-          limit: categoryId ? 24 : 7,
-        });
+        const [nextDishes] = await Promise.all([
+          getRandomDishes({
+            latitude: coordinates.latitude,
+            longitude: coordinates.longitude,
+            radiusKm: Number(radiusKm),
+            limit: categoryId ? 24 : 7,
+            categoryId: categoryId || undefined,
+          }),
+          new Promise((resolve) =>
+            window.setTimeout(resolve, RANDOM_RESULT_DELAY_MS),
+          ),
+        ]);
         const visibleDishes = categoryId
-          ? nextDishes.filter((item) => item.categoryId === categoryId).slice(0, 7)
+          ? nextDishes
+              .filter((item) => item.categoryId === categoryId)
+              .slice(0, 7)
           : nextDishes;
 
         setDishes(visibleDishes);
@@ -171,14 +240,18 @@ export function RandomTool({ categories, title }: RandomToolProps) {
 
         if (visibleDishes.length === 0) {
           if (categoryId) {
-            const activeCategory = categories.find((item) => item.id === categoryId);
+            const activeCategory = categories.find(
+              (item) => item.id === categoryId,
+            );
             setError(
               `Chưa có món ${activeCategory?.name?.toLowerCase() || "đúng danh mục"} trong bán kính ${radiusKm} km quanh bạn.`,
             );
             return;
           }
 
-          setError(`Không tìm thấy món nào trong bán kính ${radiusKm} km quanh bạn.`);
+          setError(
+            `Không tìm thấy món nào trong bán kính ${radiusKm} km quanh bạn.`,
+          );
         }
       } catch (caughtError) {
         const errorCode = getGeolocationErrorCode(caughtError);
@@ -208,7 +281,19 @@ export function RandomTool({ categories, title }: RandomToolProps) {
       : `Từ ${formatCurrency(dish.priceMin)}`;
   }, [dish]);
 
-  const distanceText = useMemo(() => formatDistance(dish?.distanceKm), [dish?.distanceKm]);
+  const distanceText = useMemo(
+    () => formatDistance(dish?.distanceKm),
+    [dish?.distanceKm],
+  );
+  const dishMapUrl =
+    dish?.restaurant?.latitude !== undefined &&
+    dish?.restaurant?.longitude !== undefined
+      ? getGoogleMapsUrl({
+          latitude: dish.restaurant.latitude,
+          longitude: dish.restaurant.longitude,
+        })
+      : "";
+  const isRandomDisabled = isPending;
 
   return (
     <section
@@ -233,14 +318,17 @@ export function RandomTool({ categories, title }: RandomToolProps) {
             {title || "Hôm nay ăn gì?"}
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-stone-700 sm:text-lg">
-            Lấy vị trí hiện tại, chọn bán kính rồi bấm random để ra món và quán đủ gần để đi ăn ngay.
+            Lấy vị trí hiện tại, chọn bán kính rồi bấm random để ra món và quán
+            đủ gần để đi ăn ngay.
           </p>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_180px]">
             <div className="rounded-lg border border-orange-100 bg-white/90 p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-black text-stone-950">Vị trí hiện tại</p>
+                  <p className="text-sm font-black text-stone-950">
+                    Vị trí hiện tại
+                  </p>
                   <p className="mt-1 text-sm leading-6 text-stone-600">
                     {locationLabel}
                   </p>
@@ -248,10 +336,19 @@ export function RandomTool({ categories, title }: RandomToolProps) {
                 <button
                   type="button"
                   onClick={requestLocation}
-                  className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-4 text-sm font-bold text-orange-800 transition hover:bg-orange-100"
+                  disabled={isLocating}
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-4 text-sm font-bold text-orange-800 transition hover:bg-orange-100 disabled:cursor-wait disabled:opacity-70"
                 >
-                  <LocateFixed className="h-4 w-4" aria-hidden="true" />
-                  {coordinates ? "Cập nhật" : "Lấy vị trí"}
+                  {isLocating ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <LocateFixed className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  {isLocating
+                    ? "Đang lấy..."
+                    : coordinates
+                      ? "Cập nhật"
+                      : "Lấy vị trí"}
                 </button>
               </div>
             </div>
@@ -292,13 +389,16 @@ export function RandomTool({ categories, title }: RandomToolProps) {
             <motion.button
               type="button"
               onClick={randomize}
-              disabled={isPending}
+              disabled={isRandomDisabled}
               whileTap={{ scale: 0.98 }}
               whileHover={{ y: -2 }}
               className="inline-flex min-h-14 items-center justify-center gap-2 rounded-lg bg-stone-950 px-8 text-lg font-black text-white shadow-[0_16px_36px_rgba(28,25,23,0.24)] transition hover:bg-orange-700 disabled:cursor-wait disabled:bg-orange-300"
             >
               {isPending ? (
-                <RefreshCw className="h-5 w-5 animate-spin" aria-hidden="true" />
+                <RefreshCw
+                  className="h-5 w-5 animate-spin"
+                  aria-hidden="true"
+                />
               ) : (
                 <Dice5 className="h-5 w-5" aria-hidden="true" />
               )}
@@ -306,7 +406,12 @@ export function RandomTool({ categories, title }: RandomToolProps) {
             </motion.button>
           </div>
 
-          {error ? <p className="mt-4 text-sm font-medium text-red-700">{error}</p> : null}
+          {status ? (
+            <p className="mt-4 text-sm font-medium text-emerald-700">{status}</p>
+          ) : null}
+          {error ? (
+            <p className="mt-2 text-sm font-medium text-red-700">{error}</p>
+          ) : null}
         </div>
 
         <div className="w-full">
@@ -323,13 +428,22 @@ export function RandomTool({ categories, title }: RandomToolProps) {
                   <div className="absolute inset-0 animate-[shimmer_1.6s_infinite] bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.7),transparent)]" />
                   <motion.div
                     animate={{ rotate: 360 }}
-                    transition={{ duration: 1.1, repeat: Infinity, ease: "linear" }}
+                    transition={{
+                      duration: 1.1,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
                     className="relative flex h-28 w-28 items-center justify-center rounded-full border-8 border-orange-100 bg-white shadow-inner"
                   >
                     <div className="absolute inset-3 rounded-full border-4 border-transparent border-t-orange-600" />
-                    <Dice5 className="relative h-9 w-9 text-orange-700" aria-hidden="true" />
+                    <Dice5
+                      className="relative h-9 w-9 text-orange-700"
+                      aria-hidden="true"
+                    />
                   </motion.div>
-                  <p className="relative mt-5 text-lg font-black text-stone-950">{spinMessages[spinIndex]}</p>
+                  <p className="relative mt-5 text-lg font-black text-stone-950">
+                    {spinMessages[spinIndex]}
+                  </p>
                   <p className="relative mt-2 text-sm text-stone-600">
                     Đang ưu tiên món đủ gần để bạn chốt nhanh.
                   </p>
@@ -343,11 +457,19 @@ export function RandomTool({ categories, title }: RandomToolProps) {
                   transition={{ type: "spring", stiffness: 260, damping: 24 }}
                 >
                   <div className="relative">
-                    <DishImage src={dish.imageUrl} alt={dish.name} priority className="min-h-64" />
+                    <DishImage
+                      src={dish.imageUrl}
+                      alt={dish.name}
+                      priority
+                      className="min-h-64"
+                    />
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-stone-950/90 via-stone-950/46 to-transparent p-4 pt-20 text-white">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="inline-flex items-center gap-1.5 rounded-md bg-orange-500 px-2 py-1 text-xs font-black uppercase text-white">
-                          <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                          <Sparkles
+                            className="h-3.5 w-3.5"
+                            aria-hidden="true"
+                          />
                           Nên thử
                         </p>
                         {distanceText ? (
@@ -356,21 +478,28 @@ export function RandomTool({ categories, title }: RandomToolProps) {
                           </span>
                         ) : null}
                       </div>
-                      <h2 className="mt-2 text-3xl font-black leading-tight">{dish.name}</h2>
+                      <h2 className="mt-2 text-3xl font-black leading-tight">
+                        {dish.name}
+                      </h2>
                     </div>
                   </div>
 
                   <div className="p-4">
-                    <p className="text-sm leading-6 text-stone-700">{dish.description}</p>
-
                     <div className="mt-4 grid gap-3 rounded-lg border border-orange-100 bg-orange-50/55 p-4 text-sm text-stone-700">
                       {dish.restaurant ? (
                         <div className="flex items-start gap-2">
-                          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-orange-700" aria-hidden="true" />
+                          <MapPin
+                            className="mt-0.5 h-4 w-4 shrink-0 text-orange-700"
+                            aria-hidden="true"
+                          />
                           <div>
-                            <p className="font-bold text-stone-950">{dish.restaurant.name}</p>
+                            <p className="font-bold text-stone-950">
+                              {dish.restaurant.name}
+                            </p>
                             {dish.restaurant.address ? (
-                              <p className="mt-1 leading-6 text-stone-600">{dish.restaurant.address}</p>
+                              <p className="mt-1 leading-6 text-stone-600">
+                                {dish.restaurant.address}
+                              </p>
                             ) : null}
                           </div>
                         </div>
@@ -385,6 +514,7 @@ export function RandomTool({ categories, title }: RandomToolProps) {
                         {dish.rating ? (
                           <span className="rounded-md bg-white px-2 py-1 font-semibold text-orange-700">
                             {dish.rating.toFixed(1)} sao
+                            {dish.ratingCount ? ` · ${dish.ratingCount} đánh giá` : ""}
                           </span>
                         ) : null}
                         {priceText ? (
@@ -395,11 +525,12 @@ export function RandomTool({ categories, title }: RandomToolProps) {
                       </div>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-3 gap-2 text-sm font-semibold">
+                    <div className="mt-4 grid grid-cols-2 gap-2 text-sm font-semibold">
                       <motion.button
                         whileTap={{ scale: 0.97 }}
                         type="button"
                         onClick={randomize}
+                        disabled={isRandomDisabled}
                         className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-orange-600 px-3 text-white hover:bg-orange-700"
                       >
                         <RefreshCw className="h-4 w-4" aria-hidden="true" />
@@ -422,6 +553,20 @@ export function RandomTool({ categories, title }: RandomToolProps) {
                         <Copy className="h-4 w-4" aria-hidden="true" />
                         {copied ? "Đã copy" : "Copy"}
                       </motion.button>
+                      {dishMapUrl ? (
+                        <a
+                          href={dishMapUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-stone-300 px-3 text-stone-800 hover:bg-stone-50"
+                        >
+                          <ExternalLink
+                            className="h-4 w-4"
+                            aria-hidden="true"
+                          />
+                          Google Maps
+                        </a>
+                      ) : null}
                     </div>
                   </div>
                 </motion.article>
@@ -435,13 +580,19 @@ export function RandomTool({ categories, title }: RandomToolProps) {
                 >
                   <motion.span
                     animate={{ y: [0, -8, 0] }}
-                    transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                    transition={{
+                      duration: 2.4,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
                     className="flex h-20 w-20 items-center justify-center rounded-full bg-stone-950 text-white shadow-[0_16px_36px_rgba(28,25,23,0.2)]"
                     aria-hidden="true"
                   >
                     <Dice5 className="h-9 w-9" />
                   </motion.span>
-                  <p className="mt-5 text-xl font-black text-stone-950">Bật vị trí rồi random để có món đầu tiên</p>
+                  <p className="mt-5 text-xl font-black text-stone-950">
+                    Bật vị trí rồi random để có món đầu tiên
+                  </p>
                   <p className="mt-2 max-w-xs text-sm leading-6 text-stone-600">
                     Hệ thống sẽ lấy món ngẫu nhiên từ các quán đang ở gần bạn.
                   </p>
@@ -455,7 +606,9 @@ export function RandomTool({ categories, title }: RandomToolProps) {
       {dishes.length > 1 ? (
         <div className="mt-6 border-t border-orange-100 pt-5">
           <div>
-            <h2 className="text-lg font-bold text-stone-950">Những món khác gần bạn</h2>
+            <h2 className="text-lg font-bold text-stone-950">
+              Những món khác gần bạn
+            </h2>
             <p className="mt-1 text-sm text-stone-600">
               Chạm vào món để đổi kết quả chính mà không cần random lại.
             </p>
@@ -467,14 +620,24 @@ export function RandomTool({ categories, title }: RandomToolProps) {
                 key={`${item.id}-${index}`}
                 onClick={() => setDish(item)}
                 className={`overflow-hidden rounded-lg border text-left transition hover:-translate-y-0.5 hover:bg-orange-50 ${
-                  dish?.id === item.id ? "border-orange-400 bg-orange-50 shadow-sm" : "border-stone-200 bg-white"
+                  dish?.id === item.id
+                    ? "border-orange-400 bg-orange-50 shadow-sm"
+                    : "border-stone-200 bg-white"
                 }`}
               >
-                <DishImage src={item.imageUrl} alt={item.name} className="aspect-[16/10]" />
+                <DishImage
+                  src={item.imageUrl}
+                  alt={item.name}
+                  className="aspect-[16/10]"
+                />
                 <div className="p-3">
-                  <span className="block font-bold text-stone-950">{item.name}</span>
+                  <span className="block font-bold text-stone-950">
+                    {item.name}
+                  </span>
                   {item.restaurant ? (
-                    <span className="mt-1 block text-xs leading-5 text-stone-600">{item.restaurant.name}</span>
+                    <span className="mt-1 block text-xs leading-5 text-stone-600">
+                      {item.restaurant.name}
+                    </span>
                   ) : null}
                   {item.distanceKm !== undefined ? (
                     <span className="mt-2 inline-block rounded-md bg-white px-2 py-1 text-xs font-semibold text-orange-700">
@@ -492,7 +655,7 @@ export function RandomTool({ categories, title }: RandomToolProps) {
         <button
           type="button"
           onClick={randomize}
-          disabled={isPending}
+          disabled={isRandomDisabled}
           className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-lg bg-stone-950 px-5 text-base font-black text-white shadow-[0_16px_40px_rgba(28,25,23,0.35)] disabled:cursor-wait disabled:bg-orange-300"
         >
           {isPending ? (
@@ -500,7 +663,11 @@ export function RandomTool({ categories, title }: RandomToolProps) {
           ) : (
             <Dice5 className="h-5 w-5" aria-hidden="true" />
           )}
-          {isPending ? spinMessages[spinIndex] : dish ? "Random món khác" : "Random món gần bạn"}
+          {isPending
+            ? spinMessages[spinIndex]
+            : dish
+              ? "Random món khác"
+              : "Random món gần bạn"}
         </button>
       </div>
     </section>

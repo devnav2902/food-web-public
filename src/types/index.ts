@@ -30,6 +30,7 @@ export type Dish = {
   imageUrl?: string;
   images?: DishImage[];
   rating?: number;
+  ratingCount?: number;
   priceMin?: number;
   priceMax?: number;
   distanceKm?: number;
@@ -51,4 +52,5 @@ export type RandomFilters = {
   longitude: number;
   radiusKm?: number;
   limit?: number;
+  categoryId?: string;
 };
