@@ -1,5 +1,4 @@
 import { apiFetch } from "@/api/client";
-import { fallbackDishes } from "@/lib/seed-data";
 import type { Dish, PaginatedResponse } from "@/types";
 
 type DishListResponse = Dish[] | PaginatedResponse<Dish>;
@@ -8,6 +7,7 @@ type BackendDish = {
   name: string;
   description?: string | null;
   rating_avg?: number | string | null;
+  rating_count?: number | string | null;
   slug?: string;
   category?: {
     id: number | string;
@@ -72,6 +72,7 @@ function mapBackendDish(dish: BackendDish): Dish {
     description: dish.description || undefined,
     imageUrl: coverImage || firstImage || undefined,
     rating: toNumber(dish.rating_avg),
+    ratingCount: toNumber(dish.rating_count),
     category: dish.category
       ? {
           id: String(dish.category.id),
@@ -98,6 +99,7 @@ function mapRankedDish(dish: RankedDish): Dish {
     name: dish.name,
     slug: `${slugifyVietnamese(dish.name)}-${dish.id}`,
     rating: toNumber(dish.rating_avg),
+    ratingCount: toNumber(dish.rating_count),
     restaurant: dish.restaurant_name
       ? {
           id: dish.restaurant_name,
@@ -112,7 +114,7 @@ export async function getFeaturedDishes(limit = 6) {
     revalidate: 600,
   });
 
-  const dishes = response ? (Array.isArray(response) ? response : response.data) : fallbackDishes;
+  const dishes = response ? (Array.isArray(response) ? response : response.data) : [];
   return dishes.slice(0, limit);
 }
 
@@ -133,7 +135,7 @@ export async function getTopDishes(limit = 5) {
         return dish;
       }
 
-      return fallbackDishes.find((item) => item.id === String(rankedDish.id)) || mapRankedDish(rankedDish);
+      return mapRankedDish(rankedDish);
     }),
   );
 
@@ -143,13 +145,13 @@ export async function getTopDishes(limit = 5) {
 export async function getDishById(id: string) {
   const response = await apiFetch<DishDetailResponse>(`/dishes/${id}`, { revalidate: 300 });
   const dish = response?.data ? mapBackendDish(response.data) : null;
-  return dish || fallbackDishes.find((item) => item.id === id || item.slug === id) || null;
+  return dish || null;
 }
 
 export async function getRelatedDishes(categoryId?: string, excludeId?: string, limit = 4) {
   const query = categoryId ? `?categoryId=${categoryId}&limit=${limit + 1}` : `?limit=${limit + 1}`;
   const response = await apiFetch<DishListResponse>(`/dishes${query}`, { revalidate: 600 });
-  const dishes = response ? (Array.isArray(response) ? response : response.data) : fallbackDishes;
+  const dishes = response ? (Array.isArray(response) ? response : response.data) : [];
 
   return dishes
     .filter((dish) => dish.id !== excludeId)

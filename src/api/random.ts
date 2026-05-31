@@ -1,5 +1,4 @@
 import { apiFetch } from "@/api/client";
-import { fallbackDishes } from "@/lib/seed-data";
 import type { Dish, DishImage, RandomFilters } from "@/types";
 
 type BackendRandomDishImage = {
@@ -92,7 +91,11 @@ function mapBackendDish(dish: BackendRandomDish): Dish {
   const imageUrl = dish.coverImageUrl || images[0]?.image;
   const wardName = dish.ward_name?.trim();
   const provinceName = dish.province_name?.trim();
-  const addressParts = [dish.restaurant_street_address?.trim(), wardName, provinceName].filter(Boolean);
+  const addressParts = [
+    dish.restaurant_street_address?.trim(),
+    wardName,
+    provinceName,
+  ].filter(Boolean);
 
   return {
     id: String(dish.dish_id),
@@ -133,14 +136,17 @@ export async function getRandomDish(filters: RandomFilters) {
 }
 
 export async function getRandomDishes(filters: RandomFilters) {
-  const response = await apiFetch<BackendRandomDishesResponse>(`/random/dishes${buildQuery(filters)}`, {
-    method: "GET",
-    revalidate: 0,
-  });
+  const response = await apiFetch<BackendRandomDishesResponse>(
+    `/random/dishes${buildQuery(filters)}`,
+    {
+      method: "GET",
+      revalidate: 0,
+    },
+  );
   const backendDishes = getBackendDishes(response);
 
   if (backendDishes === null) {
-    return [...fallbackDishes].sort(() => Math.random() - 0.5).slice(0, filters.limit ?? 7);
+    return [];
   }
 
   return backendDishes.map(mapBackendDish);
