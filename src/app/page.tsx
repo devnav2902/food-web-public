@@ -28,40 +28,38 @@ export default async function HomePage() {
     {
       question: "Random món ăn hoạt động thế nào?",
       answer:
-        "Website lấy vị trí hiện tại của bạn, tìm các món trong bán kính đã chọn rồi random ra 7 gợi ý để chốt nhanh.",
+        "Website Anzita lấy vị trí hiện tại của bạn, tìm các món trong bán kính đã chọn rồi random để gợi ý chốt nhanh.",
     },
     {
       question: "Cần bật vị trí không?",
       answer:
-        "Có. Endpoint random hiện dùng latitude và longitude để trả về món gần bạn, nên cần cấp quyền vị trí trên trình duyệt.",
+        "Có. Anzita cần dùng vị trí của bạn để trả về món gần bạn, nên cần cấp quyền vị trí trên trình duyệt.",
     },
     {
       question: "Khi nào nên random lại?",
-      answer:
-        "Nếu món đầu tiên không hợp khẩu vị, ngân sách hoặc thời tiết hôm đó, hãy random lại ngay. Lịch sử gần đây giúp bạn quay lại món đã thấy ổn.",
+      answer: "Nếu món đầu tiên không hợp khẩu vị, bạn có thể random lại ngay.",
     },
     {
-      question: "Web này có phù hợp dùng hằng ngày không?",
+      question: "Anzita có phù hợp dùng hằng ngày không?",
       answer:
-        "Có. Trang ưu tiên thao tác nhanh trên điện thoại, không cần đăng nhập và có mục món gần đây để bạn dùng lại mỗi ngày.",
+        "Có. Web Anzita này có thể dùng lại mỗi ngày một cách nhanh chóng mà không cần đăng nhập.",
     },
   ];
 
   const decisionPlaybooks = [
     {
       title: "Đói thật sự",
-      description:
-        "Ưu tiên cơm, phở, bún bò hoặc món có đạm. Chọn mood Ăn no rồi random.",
+      description: "Chọn danh mục rồi random để chọn được món nhanh.",
     },
     {
       title: "Chưa biết thèm gì",
       description:
-        "Đừng lọc quá nhiều. Random tất cả trước, sau đó bấm lại nếu món chưa đúng cảm giác.",
+        "Random món trước, sau đó bấm lại nếu món chưa đúng cảm giác.",
     },
     {
-      title: "Đi cùng nhóm",
+      title: "Tìm quán ăn",
       description:
-        "Chọn lẩu nướng hoặc món dễ chia. Gửi kết quả random cho nhóm để chốt nhanh.",
+        "Mỗi món ăn có đính kèm địa chỉ, bạn có thể mở trên google maps hoặc tìm theo địa chỉ.",
     },
   ];
 
@@ -101,16 +99,13 @@ export default async function HomePage() {
             "@type": "ListItem",
             position: index + 1,
             name: dish.name,
-            url: absoluteUrl(`/mon-an/${dish.slug || dish.id}`),
+            url: absoluteUrl(`/mon-an/${dish.slug}`),
           })),
         }}
       />
 
       <section className="mx-auto max-w-6xl px-4 py-4 sm:py-7">
-        <RandomTool
-          categories={categories}
-          title="Hôm nay ăn gì?"
-        />
+        <RandomTool categories={categories} title="Hôm nay ăn gì?" />
       </section>
 
       <div className="mx-auto max-w-6xl px-4">

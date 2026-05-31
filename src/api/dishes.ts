@@ -8,7 +8,7 @@ type BackendDish = {
   description?: string | null;
   rating_avg?: number | string | null;
   rating_count?: number | string | null;
-  slug?: string;
+  slug: string;
   category?: {
     id: number | string;
     name: string;
@@ -36,6 +36,7 @@ type RankedDish = {
   rating_count?: number;
   restaurant_name?: string;
   score?: number;
+  slug: string;
 };
 type RankedDishResponse = {
   data: RankedDish[];
@@ -43,17 +44,6 @@ type RankedDishResponse = {
 type DishDetailResponse = {
   data: BackendDish | null;
 };
-
-function slugifyVietnamese(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/Đ/g, "D")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 function toNumber(value?: number | string | null) {
   if (value === null || value === undefined) return undefined;
@@ -68,7 +58,7 @@ function mapBackendDish(dish: BackendDish): Dish {
   return {
     id: String(dish.id),
     name: dish.name,
-    slug: dish.slug || `${slugifyVietnamese(dish.name)}-${dish.id}`,
+    slug: dish.slug,
     description: dish.description || undefined,
     imageUrl: coverImage || firstImage || undefined,
     rating: toNumber(dish.rating_avg),
@@ -77,7 +67,7 @@ function mapBackendDish(dish: BackendDish): Dish {
       ? {
           id: String(dish.category.id),
           name: dish.category.name,
-          slug: dish.category.slug || slugifyVietnamese(dish.category.name),
+          slug: dish.category.slug!,
           description: dish.category.description || undefined,
         }
       : undefined,
@@ -87,7 +77,7 @@ function mapBackendDish(dish: BackendDish): Dish {
           name: dish.restaurant.name,
           slug: dish.restaurant.slug,
           address: dish.restaurant.street_address || undefined,
-          district: dish.restaurant.ward?.full_name || undefined,
+          ward: dish.restaurant.ward?.full_name || undefined,
         }
       : undefined,
   };
@@ -97,7 +87,7 @@ function mapRankedDish(dish: RankedDish): Dish {
   return {
     id: String(dish.id),
     name: dish.name,
-    slug: `${slugifyVietnamese(dish.name)}-${dish.id}`,
+    slug: dish.slug,
     rating: toNumber(dish.rating_avg),
     ratingCount: toNumber(dish.rating_count),
     restaurant: dish.restaurant_name
@@ -110,11 +100,18 @@ function mapRankedDish(dish: RankedDish): Dish {
 }
 
 export async function getFeaturedDishes(limit = 6) {
-  const response = await apiFetch<DishListResponse>(`/dishes?limit=${limit}&featured=true`, {
-    revalidate: 600,
-  });
+  const response = await apiFetch<DishListResponse>(
+    `/dishes?limit=${limit}&featured=true`,
+    {
+      revalidate: 600,
+    },
+  );
 
-  const dishes = response ? (Array.isArray(response) ? response : response.data) : [];
+  const dishes = response
+    ? Array.isArray(response)
+      ? response
+      : response.data
+    : [];
   return dishes.slice(0, limit);
 }
 
@@ -123,38 +120,54 @@ export async function getTopDishes(limit = 5) {
     revalidate: 600,
   });
 
-  if (!ranking?.data?.length) {
-    return getFeaturedDishes(limit);
+  if (!ranking?.data.length) {
+    return [];
   }
 
-  const hydratedDishes = await Promise.all(
-    ranking.data.slice(0, limit).map(async (rankedDish) => {
-      const dish = await getDishById(rankedDish.id);
+  const hydratedDishes = ranking.data.slice(0, limit).map((rankedDish) => {
+    return mapRankedDish(rankedDish);
+  });
 
-      if (dish) {
-        return dish;
-      }
-
-      return mapRankedDish(rankedDish);
-    }),
-  );
-
-  return hydratedDishes.filter((dish): dish is Dish => Boolean(dish));
+  return hydratedDishes;
 }
 
 export async function getDishById(id: string) {
-  const response = await apiFetch<DishDetailResponse>(`/dishes/${id}`, { revalidate: 300 });
+  const response = await apiFetch<DishDetailResponse>(`/dishes/${id}`, {
+    revalidate: 300,
+  });
   const dish = response?.data ? mapBackendDish(response.data) : null;
   return dish || null;
 }
 
-export async function getRelatedDishes(categoryId?: string, excludeId?: string, limit = 4) {
-  const query = categoryId ? `?categoryId=${categoryId}&limit=${limit + 1}` : `?limit=${limit + 1}`;
-  const response = await apiFetch<DishListResponse>(`/dishes${query}`, { revalidate: 600 });
-  const dishes = response ? (Array.isArray(response) ? response : response.data) : [];
+export async function getDishBySlug(slug: string) {
+  const response = await apiFetch<DishDetailResponse>(`/dishes/slug/${slug}`, {
+    revalidate: 300,
+  });
+  const dish = response?.data ? mapBackendDish(response.data) : null;
+  return dish || null;
+}
+
+export async function getRelatedDishes(
+  categoryId?: string,
+  excludeId?: string,
+  limit = 3,
+) {
+  const query = categoryId
+    ? `?categoryId=${categoryId}&limit=${limit + 1}`
+    : `?limit=${limit + 1}`;
+
+  const response = await apiFetch<DishListResponse>(`/dishes${query}`, {
+    revalidate: 600,
+  });
+
+  const dishes = response
+    ? Array.isArray(response)
+      ? response
+      : response.data
+    : [];
 
   return dishes
     .filter((dish) => dish.id !== excludeId)
-    .filter((dish) => !categoryId || dish.category?.id === categoryId || dish.category?.slug === categoryId)
+    .filter((dish) => !categoryId || dish.category?.id === categoryId)
     .slice(0, limit);
 }

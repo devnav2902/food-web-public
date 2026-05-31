@@ -1,10 +1,6 @@
 const DEFAULT_REVALIDATE_SECONDS = 300;
 
 export function getApiBaseUrl() {
-  if (typeof window === "undefined") {
-    return process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "";
-  }
-
   return process.env.NEXT_PUBLIC_API_BASE_URL || "";
 }
 

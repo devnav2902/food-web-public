@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-const defaultSiteUrl = "https://hom-nay-an-gi.vn";
+const defaultSiteUrl = "https://anzita.com";
 
 export const siteConfig = {
   name: "Hôm Nay Ăn Gì?",
@@ -28,7 +28,9 @@ export function baseMetadata({
   image?: string;
 }): Metadata {
   const url = absoluteUrl(path);
-  const images = image ? [{ url: image }] : [{ url: absoluteUrl("/og-default.jpg") }];
+  const images = image
+    ? [{ url: image }]
+    : [{ url: absoluteUrl("/og-default.jpg") }];
 
   return {
     title,

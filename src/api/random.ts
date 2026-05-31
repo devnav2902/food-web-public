@@ -9,6 +9,7 @@ type BackendRandomDishImage = {
 type BackendRandomDish = {
   dish_id: number | string;
   dish_name: string;
+  dish_slug: string;
   dish_description?: string | null;
   dish_rating_avg?: number | string | null;
   dish_rating_count?: number | string | null;
@@ -100,7 +101,7 @@ function mapBackendDish(dish: BackendRandomDish): Dish {
   return {
     id: String(dish.dish_id),
     name: dish.dish_name,
-    slug: `${slugifyVietnamese(dish.dish_name)}-${dish.dish_id}`,
+    slug: dish.dish_slug,
     description:
       dish.dish_description?.trim() ||
       (dish.restaurant_name
@@ -121,7 +122,7 @@ function mapBackendDish(dish: BackendRandomDish): Dish {
           id: String(dish.restaurant_id || dish.restaurant_name),
           name: dish.restaurant_name,
           address: addressParts.join(", ") || undefined,
-          district: wardName || undefined,
+          ward: wardName || undefined,
           province: provinceName || undefined,
           latitude: toNumber(dish.restaurant_latitude),
           longitude: toNumber(dish.restaurant_longitude),

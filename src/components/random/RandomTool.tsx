@@ -128,7 +128,7 @@ export function RandomTool({ categories, title }: RandomToolProps) {
 
     if (initialCoordinates) {
       setCoordinates(initialCoordinates);
-      setLocationLabel("Đã lý vị trí trên thiết bị");
+      setLocationLabel("Đã lưu vị trí trên thiết bị");
       setStatus(
         "Đang dùng vị trí đã lưu. Bạn có thể bấm cập nhật nếu đã di chuyển.",
       );
@@ -171,6 +171,7 @@ export function RandomTool({ categories, title }: RandomToolProps) {
 
     setCoordinates(nextCoordinates);
     setLocationLabel("Đã lấy vị trí hiện tại của bạn");
+
     window.localStorage.setItem(
       LOCATION_STORAGE_KEY,
       JSON.stringify(nextCoordinates),
@@ -230,28 +231,23 @@ export function RandomTool({ categories, title }: RandomToolProps) {
 
     startTransition(async () => {
       try {
-        const [nextDishes] = await Promise.all([
+        const [dishes] = await Promise.all([
           getRandomDishes({
             latitude: coordinates.latitude,
             longitude: coordinates.longitude,
             radiusKm: Number(radiusKm),
-            limit: categoryId ? 24 : 7,
+            limit: 7,
             categoryId: categoryId || undefined,
           }),
           new Promise((resolve) =>
             window.setTimeout(resolve, RANDOM_RESULT_DELAY_MS),
           ),
         ]);
-        const visibleDishes = categoryId
-          ? nextDishes
-              .filter((item) => item.categoryId === categoryId)
-              .slice(0, 7)
-          : nextDishes;
 
-        setDishes(visibleDishes);
-        setDish(visibleDishes[0]);
+        setDishes(dishes);
+        setDish(dishes[0]);
 
-        if (visibleDishes.length === 0) {
+        if (dishes.length === 0) {
           if (categoryId) {
             const activeCategory = categories.find(
               (item) => item.id === categoryId,
@@ -259,6 +255,7 @@ export function RandomTool({ categories, title }: RandomToolProps) {
             setError(
               `Chưa có món ${activeCategory?.name?.toLowerCase() || "đúng danh mục"} trong bán kính ${radiusKm} km quanh bạn.`,
             );
+
             return;
           }
 
@@ -280,10 +277,16 @@ export function RandomTool({ categories, title }: RandomToolProps) {
   }
 
   async function copyDishLink() {
-    if (!dish) return;
-    const url = `${window.location.origin}/mon-an/${dish.slug || dish.id}`;
+    if (!dish) {
+      return;
+    }
+
+    const url = `${window.location.origin}/mon-an/${dish.slug}`;
+
     await navigator.clipboard.writeText(url);
+
     setCopied(true);
+
     window.setTimeout(() => setCopied(false), 1600);
   }
 
@@ -298,6 +301,7 @@ export function RandomTool({ categories, title }: RandomToolProps) {
     () => formatDistance(dish?.distanceKm),
     [dish?.distanceKm],
   );
+
   const dishMapUrl =
     dish?.restaurant?.latitude !== undefined &&
     dish?.restaurant?.longitude !== undefined
@@ -306,6 +310,7 @@ export function RandomTool({ categories, title }: RandomToolProps) {
           longitude: dish.restaurant.longitude,
         })
       : "";
+
   const isRandomDisabled = isPending;
 
   return (

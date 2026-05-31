@@ -10,8 +10,8 @@ export type Restaurant = {
   name: string;
   slug?: string;
   address?: string;
-  district?: string;
   province?: string;
+  ward?: string;
   latitude?: number;
   longitude?: number;
   rating?: number;
@@ -25,7 +25,7 @@ export type DishImage = {
 export type Dish = {
   id: string;
   name: string;
-  slug?: string;
+  slug: string;
   description?: string;
   imageUrl?: string;
   images?: DishImage[];
