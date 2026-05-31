@@ -7,7 +7,6 @@ module.exports = {
       ignore_watch: ["node_modules"],
       instances: 1,
       env: {
-        NODE_ENV: "production",
         PORT: 3003,
       },
     },
