@@ -2,8 +2,9 @@ module.exports = {
   apps: [
     {
       name: "food-web-public",
-      script: "./node_modules/next/dist/bin/next",
-      watch: true,
+      script: "pnpm",
+      args: "start",
+      watch: false,
       ignore_watch: ["node_modules"],
       instances: 1,
       env: {
