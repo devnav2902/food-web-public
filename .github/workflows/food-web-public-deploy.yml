@@ -35,3 +35,45 @@ jobs:
             pm2 restart food-web-public || pm2 start ecosystem.config.js --env production
 
             pm2 save
+
+      - name: Notify telegram success
+        if: success()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_DEPLOY_WEB_PUBLIC_BOT_TOKEN }}/sendMessage" \
+          -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+          -d parse_mode="HTML" \
+          --data-urlencode text="Hey ${{ github.actor }}, mới build hệ thống thành công rồi đó, vô check nha 😁
+          ✅ <b>Deploy Success</b>
+
+          🌿 Branch:
+          ${{ github.ref_name }}
+
+          📝 Commit:
+          <code>${{ github.event.head_commit.message }}</code>
+
+          👤 Author:
+          ${{ github.event.head_commit.author.name }}
+
+          🌐 Website:
+          https://anzita.com"
+
+      - name: Notify telegram fail
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_DEPLOY_WEB_PUBLIC_BOT_TOKEN }}/sendMessage" \
+          -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+          -d parse_mode="HTML" \
+          --data-urlencode text="Hey ${{ github.actor }}, hệ thống build chưa được, vô check thử nha kk 😅
+          ❌ <b>Deploy Failed</b>
+
+          🌿 Branch:
+          ${{ github.ref_name }}
+
+          📝 Commit:
+          <code>${{ github.event.head_commit.message }}</code>
+
+          👤 Author:
+          ${{ github.event.head_commit.author.name }}
+
+          🌐 Website:
+          https://anzita.com"
