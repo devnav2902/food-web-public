@@ -16,7 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 type RandomToolProps = {
   categories: Category[];
@@ -83,6 +83,19 @@ function hasCoordinatesChanged(
   );
 }
 
+function getRandomRequestKey(
+  coordinates: Coordinates,
+  radiusKm: string,
+  categoryId: string,
+) {
+  return [
+    coordinates.latitude,
+    coordinates.longitude,
+    radiusKm,
+    categoryId || "all",
+  ].join(":");
+}
+
 function readStoredCoordinates() {
   if (typeof window === "undefined") {
     return null;
@@ -125,6 +138,8 @@ export function RandomTool({ categories, title }: RandomToolProps) {
   const [copied, setCopied] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const coordinatesRef = useRef<Coordinates | null>(null);
+  const activeRandomRequestKeyRef = useRef<string | null>(null);
 
   const todayKey = useMemo(
     () =>
@@ -140,6 +155,7 @@ export function RandomTool({ categories, title }: RandomToolProps) {
     const initialCoordinates = readStoredCoordinates();
 
     if (initialCoordinates) {
+      coordinatesRef.current = initialCoordinates;
       setCoordinates(initialCoordinates);
       setLocationLabel("Đã lưu vị trí trên thiết bị");
       setStatus(
@@ -182,6 +198,7 @@ export function RandomTool({ categories, title }: RandomToolProps) {
       longitude: position.coords.longitude,
     };
 
+    coordinatesRef.current = nextCoordinates;
     setCoordinates(nextCoordinates);
     setLocationLabel("Đã lấy vị trí hiện tại của bạn");
 
@@ -194,6 +211,8 @@ export function RandomTool({ categories, title }: RandomToolProps) {
   }
 
   function setLocationError(message: string) {
+    coordinatesRef.current = null;
+    activeRandomRequestKeyRef.current = null;
     setCoordinates(null);
     setLocationLabel("Chưa lấy vị trí hiện tại");
     setError(message);
@@ -211,6 +230,7 @@ export function RandomTool({ categories, title }: RandomToolProps) {
       const nextCoordinates = await ensureCoordinates(true);
 
       if (hasCoordinatesChanged(previousCoordinates, nextCoordinates)) {
+        activeRandomRequestKeyRef.current = null;
         setDishes([]);
         setDish(undefined);
       }
@@ -248,38 +268,65 @@ export function RandomTool({ categories, title }: RandomToolProps) {
       return;
     }
 
+    const requestCoordinates = coordinates;
+    const requestRadiusKm = radiusKm;
+    const requestCategoryId = categoryId;
+    const requestKey = getRandomRequestKey(
+      requestCoordinates,
+      requestRadiusKm,
+      requestCategoryId,
+    );
+
+    activeRandomRequestKeyRef.current = requestKey;
+
     startTransition(async () => {
       try {
         const [dishes] = await Promise.all([
           getRandomDishes({
-            latitude: coordinates.latitude,
-            longitude: coordinates.longitude,
-            radiusKm: Number(radiusKm),
+            latitude: requestCoordinates.latitude,
+            longitude: requestCoordinates.longitude,
+            radiusKm: Number(requestRadiusKm),
             limit: 7,
-            categoryId: categoryId || undefined,
+            categoryId: requestCategoryId || undefined,
           }),
           new Promise((resolve) =>
             window.setTimeout(resolve, RANDOM_RESULT_DELAY_MS),
           ),
         ]);
 
+        const latestCoordinates = coordinatesRef.current;
+        const latestRequestKey = latestCoordinates
+          ? getRandomRequestKey(
+              latestCoordinates,
+              requestRadiusKm,
+              requestCategoryId,
+            )
+          : null;
+
+        if (
+          activeRandomRequestKeyRef.current !== requestKey ||
+          latestRequestKey !== requestKey
+        ) {
+          return;
+        }
+
         setDishes(dishes);
         setDish(dishes[0]);
 
         if (dishes.length === 0) {
-          if (categoryId) {
+          if (requestCategoryId) {
             const activeCategory = categories.find(
-              (item) => item.id === categoryId,
+              (item) => item.id === requestCategoryId,
             );
             setError(
-              `Chưa có món ${activeCategory?.name?.toLowerCase() || "đúng danh mục"} trong bán kính ${radiusKm} km quanh bạn.`,
+              `Chưa có món ${activeCategory?.name?.toLowerCase() || "đúng danh mục"} trong bán kính ${requestRadiusKm} km quanh bạn.`,
             );
 
             return;
           }
 
           setError(
-            `Không tìm thấy món nào trong bán kính ${radiusKm} km quanh bạn.`,
+            `Không tìm thấy món nào trong bán kính ${requestRadiusKm} km quanh bạn.`,
           );
         }
       } catch (caughtError) {
