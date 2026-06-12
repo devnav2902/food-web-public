@@ -37,6 +37,7 @@ type RankedDish = {
   restaurant_name?: string;
   score?: number;
   slug: string;
+  coverImageUrl?: string | null;
 };
 type RankedDishResponse = {
   data: RankedDish[];
@@ -84,10 +85,13 @@ function mapBackendDish(dish: BackendDish): Dish {
 }
 
 function mapRankedDish(dish: RankedDish): Dish {
+  const imageUrl = dish.coverImageUrl || undefined;
+
   return {
     id: String(dish.id),
     name: dish.name,
     slug: dish.slug,
+    imageUrl,
     rating: toNumber(dish.rating_avg),
     ratingCount: toNumber(dish.rating_count),
     restaurant: dish.restaurant_name
