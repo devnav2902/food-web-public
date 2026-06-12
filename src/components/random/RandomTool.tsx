@@ -70,6 +70,19 @@ function getGoogleMapsUrl(coordinates: Coordinates) {
   return `https://www.google.com/maps/search/?api=1&query=${coordinates.latitude},${coordinates.longitude}`;
 }
 
+function hasCoordinatesChanged(
+  current: Coordinates | null,
+  next: Coordinates,
+) {
+  if (!current) {
+    return true;
+  }
+
+  return (
+    current.latitude !== next.latitude || current.longitude !== next.longitude
+  );
+}
+
 function readStoredCoordinates() {
   if (typeof window === "undefined") {
     return null;
@@ -147,8 +160,8 @@ export function RandomTool({ categories, title }: RandomToolProps) {
     return () => window.clearInterval(interval);
   }, [isPending]);
 
-  async function ensureCoordinates() {
-    if (coordinates) return coordinates;
+  async function ensureCoordinates(forceRefresh = false) {
+    if (coordinates && !forceRefresh) return coordinates;
 
     if (!("geolocation" in navigator)) {
       throw new Error("Trình duyệt này chưa hỗ trợ định vị.");
@@ -194,7 +207,13 @@ export function RandomTool({ categories, title }: RandomToolProps) {
     setIsLocating(true);
 
     try {
-      await ensureCoordinates();
+      const previousCoordinates = coordinates;
+      const nextCoordinates = await ensureCoordinates(true);
+
+      if (hasCoordinatesChanged(previousCoordinates, nextCoordinates)) {
+        setDishes([]);
+        setDish(undefined);
+      }
       setStatus(
         "Đã lấy vị trí thành công. Giờ bạn có thể random món gần mình.",
       );
