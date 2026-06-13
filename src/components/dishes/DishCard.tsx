@@ -13,6 +13,8 @@ export function DishCard({
 }) {
   const href = `/mon-an/${dish.slug}`;
 
+  console.log("dish", dish);
+
   return (
     <article className="group overflow-hidden border border-orange-100 bg-white shadow-sm transition hover:-translate-y-1 hover:border-orange-200 hover:shadow-[0_18px_38px_rgba(120,53,15,0.12)]">
       <Link href={href} aria-label={`Xem chi tiết ${dish.name}`}>
