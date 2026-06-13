@@ -3,15 +3,14 @@ import { AdSlot } from "@/components/ads/AdSlot";
 import { DishCard } from "@/components/dishes/DishCard";
 import { DishGalleryLightbox } from "@/components/dishes/DishGalleryLightbox";
 import { DishImage } from "@/components/dishes/DishImage";
-import { AppCta } from "@/components/layout/AppCta";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { absoluteUrl, baseMetadata } from "@/lib/site";
+import type { OpeningHours } from "@/types";
 import { formatCurrency } from "@/utils/format";
-import type { Metadata } from "next";
 import { MapPin, Phone, Shuffle } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { OpeningHours } from "@/types";
 
 type DishPageProps = {
   params: Promise<{ id: string }>;
@@ -413,10 +412,6 @@ export default async function DishPage({ params }: DishPageProps) {
               </div>
             </section>
           ) : null}
-
-          <div id="tai-app" className="mt-10">
-            <AppCta compact />
-          </div>
         </article>
 
         <aside className="hidden lg:block">

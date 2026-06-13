@@ -1,6 +1,5 @@
 import { apiFetch } from "@/api/client";
 import type { Dish, DishImage, PaginatedResponse } from "@/types";
-import { log } from "console";
 
 type DishListResponse = BackendDish[] | PaginatedResponse<BackendDish>;
 type BackendOpeningHoursDay = {

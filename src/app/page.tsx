@@ -1,13 +1,12 @@
-import type { Metadata } from "next";
-import { Flame } from "lucide-react";
-import { AdSlot } from "@/components/ads/AdSlot";
-import { DishCard } from "@/components/dishes/DishCard";
-import { AppCta } from "@/components/layout/AppCta";
-import { RandomTool } from "@/components/random/RandomTool";
-import { JsonLd } from "@/components/seo/JsonLd";
 import { getCategories } from "@/api/categories";
 import { getTopDishes } from "@/api/dishes";
+import { AdSlot } from "@/components/ads/AdSlot";
+import { DishCard } from "@/components/dishes/DishCard";
+import { RandomTool } from "@/components/random/RandomTool";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { absoluteUrl, baseMetadata } from "@/lib/site";
+import { Flame } from "lucide-react";
+import type { Metadata } from "next";
 
 export const revalidate = 300;
 
@@ -183,10 +182,6 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-4 py-4">
-        <AppCta />
       </section>
 
       <section
